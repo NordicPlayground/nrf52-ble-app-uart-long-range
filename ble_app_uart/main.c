@@ -56,7 +56,6 @@
 #include "nrf.h"
 #include "ble_hci.h"
 #include "ble_advdata.h"
-#include "ble_advertising.h"
 #include "ble_conn_params.h"
 #include "nrf_sdh.h"
 #include "nrf_sdh_soc.h"
@@ -107,7 +106,6 @@
 
 BLE_NUS_DEF(m_nus);                                                                 /**< BLE NUS service instance. */
 NRF_BLE_GATT_DEF(m_gatt);                                                           /**< GATT module instance. */
-BLE_ADVERTISING_DEF(m_advertising);                                                 /**< Advertising module instance. */
 
 static uint16_t   m_conn_handle          = BLE_CONN_HANDLE_INVALID;                 /**< Handle of the current connection. */
 static uint16_t   m_ble_nus_max_data_len = BLE_GATT_ATT_MTU_DEFAULT - 3;            /**< Maximum length of data (in bytes) that can be transmitted to the peer by the Nordic UART service module. */
@@ -294,31 +292,6 @@ static void sleep_mode_enter(void)
     // Go to system-off mode (this function will not return; wakeup will cause a reset).
     err_code = sd_power_system_off();
     APP_ERROR_CHECK(err_code);
-}
-
-
-/**@brief Function for handling advertising events.
- *
- * @details This function will be called for advertising events which are passed to the application.
- *
- * @param[in] ble_adv_evt  Advertising event.
- */
-static void on_adv_evt(ble_adv_evt_t ble_adv_evt)
-{
-    uint32_t err_code;
-
-    switch (ble_adv_evt)
-    {
-        case BLE_ADV_EVT_FAST:
-            err_code = bsp_indication_set(BSP_INDICATE_ADVERTISING);
-            APP_ERROR_CHECK(err_code);
-            break;
-        case BLE_ADV_EVT_IDLE:
-            sleep_mode_enter();
-            break;
-        default:
-            break;
-    }
 }
 
 
@@ -514,11 +487,11 @@ void bsp_event_handler(bsp_event_t event)
         case BSP_EVENT_WHITELIST_OFF:
             if (m_conn_handle == BLE_CONN_HANDLE_INVALID)
             {
-                err_code = ble_advertising_restart_without_whitelist(&m_advertising);
-                if (err_code != NRF_ERROR_INVALID_STATE)
-                {
-                    APP_ERROR_CHECK(err_code);
-                }
+                //err_code = ble_advertising_restart_without_whitelist(&m_advertising);
+                //if (err_code != NRF_ERROR_INVALID_STATE)
+                //{
+                //    APP_ERROR_CHECK(err_code);
+                //}
             }
             break;
 
@@ -609,32 +582,49 @@ static void uart_init(void)
 /**@snippet [UART Initialization] */
 
 
-/**@brief Function for initializing the Advertising functionality.
- */
-static void advertising_init(void)
+/**@brief Function for setting up advertising data. */
+static void advertising_data_set(void)
 {
-    uint32_t               err_code;
-    ble_advertising_init_t init;
+    static ble_advdata_t adv_data; 
+    memset(&adv_data, 0, sizeof(adv_data));
+    adv_data.name_type          = BLE_ADVDATA_FULL_NAME;
+    adv_data.flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
+    adv_data.include_appearance = false;
 
-    memset(&init, 0, sizeof(init));
-
-    init.advdata.name_type          = BLE_ADVDATA_FULL_NAME;
-    init.advdata.include_appearance = false;
-    init.advdata.flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_LIMITED_DISC_MODE;
-
-    init.srdata.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
-    init.srdata.uuids_complete.p_uuids  = m_adv_uuids;
-
-    init.config.ble_adv_fast_enabled  = true;
-    init.config.ble_adv_fast_interval = APP_ADV_INTERVAL;
-    init.config.ble_adv_fast_timeout  = APP_ADV_TIMEOUT_IN_SECONDS;
-
-    init.evt_handler = on_adv_evt;
-
-    err_code = ble_advertising_init(&m_advertising, &init);
+    static ble_advdata_t sr_data;
+    memset(&sr_data, 0, sizeof(sr_data));
+    sr_data.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
+    sr_data.uuids_complete.p_uuids = m_adv_uuids;
+    
+    ret_code_t err_code = ble_advdata_set(&adv_data, &sr_data);
     APP_ERROR_CHECK(err_code);
+}
 
-    ble_advertising_conn_cfg_tag_set(&m_advertising, APP_BLE_CONN_CFG_TAG);
+
+/**@brief Function for starting advertising. */
+static void advertising_start(void)
+{
+    static ble_gap_adv_params_t adv_params = {0};
+    
+    adv_params.properties.connectable = 1;
+    adv_params.properties.scannable = 1;
+    adv_params.properties.legacy_pdu = 1;
+    adv_params.p_peer_addr   = NULL;
+    adv_params.fp            = BLE_GAP_ADV_FP_ANY;
+    adv_params.interval      = APP_ADV_INTERVAL;
+    adv_params.duration      = APP_ADV_TIMEOUT_IN_SECONDS * 100;
+#if defined(S140sd)
+    adv_params.primary_phy   = BLE_GAP_PHY_CODED;
+    adv_params.secondary_phy = BLE_GAP_PHY_CODED;
+#else
+    adv_params.primary_phy   = BLE_GAP_PHY_1MBPS;
+    adv_params.secondary_phy = BLE_GAP_PHY_1MBPS;
+#endif
+
+    NRF_LOG_INFO("Starting advertising.");
+
+    ret_code_t err_code = sd_ble_gap_adv_start(BLE_GAP_ADV_SET_HANDLE_DEFAULT, &adv_params, APP_BLE_CONN_CFG_TAG);
+    APP_ERROR_CHECK(err_code);
 }
 
 
@@ -695,12 +685,13 @@ int main(void)
     gap_params_init();
     gatt_init();
     services_init();
-    advertising_init();
+    advertising_data_set();
     conn_params_init();
 
     printf("\r\nUART Start!\r\n");
     NRF_LOG_INFO("UART Start!");
-    err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
+    advertising_start();
+    //err_code = ble_advertising_start(&m_advertising, BLE_ADV_MODE_FAST);
     APP_ERROR_CHECK(err_code);
 
     // Enter main loop.
