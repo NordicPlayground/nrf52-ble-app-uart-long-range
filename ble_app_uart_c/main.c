@@ -105,12 +105,12 @@ static ble_gap_conn_params_t const m_connection_param =
 /**@brief Scan parameters requested for scanning and connection. */
 static ble_gap_scan_params_t m_scan_params =
 {
-    .active            = 0x01,
+    .active            = 0,
     .interval          = SCAN_INTERVAL,
     .window            = SCAN_WINDOW,
     .filter_policy     = BLE_GAP_SCAN_FP_ACCEPT_ALL,
     .filter_duplicates = BLE_GAP_SCAN_DUPLICATES_REPORT,
-    .scan_phy          = BLE_GAP_PHY_1MBPS,
+    .scan_phy          = BLE_GAP_PHY_CODED,
     .duration          = SCAN_TIMEOUT,
     .period            = 0x0000, // No period.
 };
@@ -455,6 +455,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         }break; // BLE_GAP_EVT_ADV_REPORT
 
         case BLE_GAP_EVT_CONNECTED:
+            printf("Connected!\r\n!");
             NRF_LOG_INFO("Connected to target");
             err_code = ble_nus_c_handles_assign(&m_ble_nus_c, p_ble_evt->evt.gap_evt.conn_handle, NULL);
             APP_ERROR_CHECK(err_code);
@@ -693,6 +694,7 @@ static void db_discovery_init(void)
     ret_code_t err_code = ble_db_discovery_init(db_disc_handler);
     APP_ERROR_CHECK(err_code);
 }
+
 
 int main(void)
 {

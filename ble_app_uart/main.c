@@ -82,12 +82,12 @@
 
 #define APP_FEATURE_NOT_SUPPORTED       BLE_GATT_STATUS_ATTERR_APP_BEGIN + 2        /**< Reply when unsupported features are requested. */
 
-#define DEVICE_NAME                     "Nordic_UART"                               /**< Name of device. Will be included in the advertising data. */
+#define DEVICE_NAME                     "LR_UART"                                   /**< Name of device. Will be included in the advertising data. */
 #define NUS_SERVICE_UUID_TYPE           BLE_UUID_TYPE_VENDOR_BEGIN                  /**< UUID type for the Nordic UART Service (vendor specific). */
 
 #define APP_BLE_OBSERVER_PRIO           3                                           /**< Application's BLE observer priority. You shouldn't need to modify this value. */
 
-#define APP_ADV_INTERVAL                64                                          /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
+#define APP_ADV_INTERVAL                0x80                                        /**< The advertising interval (in units of 0.625 ms. This value corresponds to 40 ms). */
 #define APP_ADV_TIMEOUT_IN_SECONDS      180                                         /**< The advertising timeout (in units of seconds). */
 
 #define MIN_CONN_INTERVAL               MSEC_TO_UNITS(20, UNIT_1_25_MS)             /**< Minimum acceptable connection interval (20 ms), Connection interval uses 1.25 ms units. */
@@ -307,6 +307,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     switch (p_ble_evt->header.evt_id)
     {
         case BLE_GAP_EVT_CONNECTED:
+            printf("Connected!\r\n");
             NRF_LOG_INFO("Connected");
             err_code = bsp_indication_set(BSP_INDICATE_CONNECTED);
             APP_ERROR_CHECK(err_code);
@@ -591,12 +592,12 @@ static void advertising_data_set(void)
     adv_data.flags              = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
     adv_data.include_appearance = false;
 
-    static ble_advdata_t sr_data;
-    memset(&sr_data, 0, sizeof(sr_data));
-    sr_data.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
-    sr_data.uuids_complete.p_uuids = m_adv_uuids;
+    //static ble_advdata_t sr_data;
+    //memset(&sr_data, 0, sizeof(sr_data));
+    adv_data.uuids_complete.uuid_cnt = sizeof(m_adv_uuids) / sizeof(m_adv_uuids[0]);
+    adv_data.uuids_complete.p_uuids = m_adv_uuids;
     
-    ret_code_t err_code = ble_advdata_set(&adv_data, &sr_data);
+    ret_code_t err_code = ble_advdata_set(&adv_data, 0);//&sr_data);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -607,13 +608,14 @@ static void advertising_start(void)
     static ble_gap_adv_params_t adv_params = {0};
     
     adv_params.properties.connectable = 1;
-    adv_params.properties.scannable = 1;
-    adv_params.properties.legacy_pdu = 1;
+    // Setting up the scan response packet is currently not supported when using CODED phy
+    adv_params.properties.scannable = 0;    
+    adv_params.properties.legacy_pdu = 0;
     adv_params.p_peer_addr   = NULL;
     adv_params.fp            = BLE_GAP_ADV_FP_ANY;
     adv_params.interval      = APP_ADV_INTERVAL;
     adv_params.duration      = APP_ADV_TIMEOUT_IN_SECONDS * 100;
-#if defined(S140sd)
+#if defined(S140)
     adv_params.primary_phy   = BLE_GAP_PHY_CODED;
     adv_params.secondary_phy = BLE_GAP_PHY_CODED;
 #else
