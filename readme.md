@@ -1,9 +1,9 @@
 nrf52-ble-app-uart-long-range
 =============================
 
-This repository contains modified version of the ble_app_uart and ble_app_uart_c applications, which support the long range mode provided by S140 v6.0.0-6 alpha
+This repository contains modified versions of the ble_app_uart and ble_app_uart_c applications, which support the long range mode provided by S140 v6.0.0-6 alpha SoftDevice.
 
-The ble_app_uart example will advertise on long range, and the ble_app_uart_c application will scan and connect over long range. 
+The ble_app_uart example will advertise on long range, and the ble_app_uart_c application will scan and connect over long range. Otherwise the functionality is similar to the original examples. 
 
 Requirements
 ------------
@@ -18,7 +18,5 @@ About this project
 This application is one of several applications that has been built by the support team at Nordic Semiconductor, as a demo of some particular feature or use case. It has not necessarily been thoroughly tested, so there might be unknown issues. It is hence provided as-is, without any warranty. 
 
 However, in the hope that it still may be useful also for others than the ones we initially wrote it for, we've chosen to distribute it here on GitHub. 
-
-The application is built to be used with the official nRF5 SDK, that can be downloaded from [http://developer.nordicsemi.com/nRF5_SDK/](http://developer.nordicsemi.com/nRF5_SDK/)
 
 Please post any questions about this project on [https://devzone.nordicsemi.com](https://www.nordicsemi.com/)
